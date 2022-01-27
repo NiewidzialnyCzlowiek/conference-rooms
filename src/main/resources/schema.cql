@@ -1,13 +1,13 @@
-// User credentials, keyed by email address so we can authenticate
+CREATE KEYSPACE IF NOT EXISTS conference_rooms WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+USE conference_rooms;
 CREATE TABLE IF NOT EXISTS reservation_entry
 (
     room_id int,
     date date,
-    hour int,
     quant int,
     user_id uuid,
-    PRIMARY KEY ((room_id, date), hour, quant)
-) WITH CLUSTERING ORDER BY (hour ASC, quant ASC);
+    PRIMARY KEY ((room_id, date), quant)
+) WITH CLUSTERING ORDER BY (quant ASC);
 
 
 CREATE TABLE IF NOT EXISTS reservation_log
@@ -17,9 +17,7 @@ CREATE TABLE IF NOT EXISTS reservation_log
     timestamp timestamp,
     user_id uuid,
     operation text,
-    start_hour int,
     start_quant int,
-    end_hour int,
     end_quant int,
     PRIMARY KEY ((room_id, date), timestamp, user_id)
 ) WITH CLUSTERING ORDER BY (timestamp ASC, user_id ASC);
