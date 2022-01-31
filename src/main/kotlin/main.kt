@@ -1,14 +1,10 @@
 import com.datastax.oss.driver.api.core.CqlIdentifier
 import com.datastax.oss.driver.api.core.CqlSession
-import com.datastax.oss.driver.api.core.cql.SimpleStatement
-import com.datastax.oss.driver.api.core.type.DataType
-import com.datastax.oss.driver.api.core.type.DataTypes
-import com.datastax.oss.driver.api.core.type.codec.TypeCodecs
-import com.datastax.oss.protocol.internal.ProtocolConstants
 import mapper.ConferenceRoomsMapper
 import mapper.QuantCalculus.toQuant
 import mapper.ReservationEntry
 import mapper.ReservationLog
+import client.Client
 import mu.KotlinLogging
 import java.net.URI
 import java.nio.file.FileSystems
@@ -31,6 +27,54 @@ object App {
 
         val userId = UUID.randomUUID()
         val reservationEntryDao = mapper.reservationDao()
+
+       /* val client = Client(reservationEntryDao)
+        while(true) {
+            print("Welcome, do you wish to:\n" +
+                    "1. Create a reservation \n" +
+                    "2. Delete a reservation \n ")
+
+            val choice = readLine()
+            if (choice.equals("1")) {
+                print("Choose a room number: ")
+                val roomNumber = readLine()?.toInt()
+                print("Choose a date: ")
+                val date = readLine()
+
+                print("Choose a start hour: ")
+                val beginHour = readLine()
+                var hour: Int = 0
+                if (beginHour != null) {
+                    hour = beginHour.toInt()
+                }
+
+                print("Choose a start minute(rounded): ")
+                val beginMinute = readLine()
+                var minute: Int = 0
+                if (beginMinute != null) {
+                    minute = beginMinute.toInt()
+                }
+                val startQuant = LocalTime.of(hour, minute).toQuant()
+
+                print("Choose an end hour: ")
+                val endHour = readLine()
+                var hour2: Int = 0
+                if (endHour != null) {
+                    hour2 = endHour.toInt()
+                }
+
+                print("Choose an end minute(rounded): ")
+                val endMinute = readLine()
+                var minute2: Int = 0
+                if (endMinute != null) {
+                    minute2 = endMinute.toInt()
+                }
+                val endQuant = LocalTime.of(hour2, minute2).toQuant()
+
+                client.createReservation(roomNumber, date, startQuant, endQuant)
+            }
+        }*/
+
         val reservationEntry = ReservationEntry(roomId = 1,
                                                 date = LocalDate.now(),
                                                 quant = LocalTime.of(12, 10).toQuant(),
