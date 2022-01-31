@@ -2,6 +2,7 @@ package mapper
 
 import com.datastax.oss.driver.api.core.PagingIterable
 import com.datastax.oss.driver.api.mapper.annotations.*
+import mapper.query.GetReservationEntriesRangeQueryProvider
 import java.time.Instant
 import java.time.LocalDate
 import java.util.*
@@ -18,10 +19,10 @@ data class ReservationEntry(@PartitionKey(0) val roomId: Int?,
 
 @Entity
 @CqlName("reservation_log")
-data class ReservationLog(@PartitionKey(0) val roomId: Int?,
-                          @PartitionKey(1) val date: LocalDate?,
+data class ReservationLog(@PartitionKey(0) val date: LocalDate?,
                           @ClusteringColumn(0) val timestamp: Instant?,
                           @ClusteringColumn(1) val userId: UUID?,
+                          val roomId: Int?,
                           val operation: String?,
                           val startQuant: TimeQuant?,
                           val endQuant: TimeQuant?) {
@@ -40,25 +41,23 @@ interface ReservationDao {
     fun createEntry(reservationEntry: ReservationEntry)
 
     @Select
-    fun getEntry(roomId: Int?, date: LocalDate?, hour: Int?, quant: TimeQuant?): ReservationEntry?
-
-//    TODO
-//    @Select
-//    fun getEntryRange(roomId: Int?, date: LocalDate?, fromQuant: TimeQuant, toQuant: TimeQuant)
+    fun getEntry(roomId: Int?, date: LocalDate?, quant: TimeQuant?): ReservationEntry?
 
     @Select
     @StatementAttributes(consistencyLevel = "QUORUM")
     fun getEntriesForDate(roomId: Int?, date: LocalDate?): PagingIterable<ReservationEntry>
 
-    @Select
     @StatementAttributes(consistencyLevel = "ONE")
+    @QueryProvider(
+        providerClass = GetReservationEntriesRangeQueryProvider::class,
+        entityHelpers = [ReservationEntry::class])
     fun getEntriesForTimeRange(roomId: Int?, date: LocalDate?, startQuant: TimeQuant?, endQuant: TimeQuant?): PagingIterable<ReservationEntry>
 
     @Update
     fun updateEntry(template: ReservationEntry)
 
     @Select
-    fun getLogsForDate(roomId: Int?, date: LocalDate?): PagingIterable<ReservationLog>
+    fun getLogsForDate(date: LocalDate?): PagingIterable<ReservationLog>
 
     @Insert
     fun createLog(reservationLog: ReservationLog)

@@ -12,14 +12,14 @@ CREATE TABLE IF NOT EXISTS reservation_entry
 
 CREATE TABLE IF NOT EXISTS reservation_log
 (
-    room_id int,
     date date,
     timestamp timestamp,
     user_id uuid,
+    room_id int,
     operation text,
     start_quant int,
     end_quant int,
-    PRIMARY KEY ((room_id, date), timestamp, user_id)
+    PRIMARY KEY (date, timestamp, user_id)
 ) WITH CLUSTERING ORDER BY (timestamp ASC, user_id ASC);
 
 

@@ -49,12 +49,18 @@ object App {
         reservationEntryDao.createLog(reservationLog)
 
         val reservationEntries = reservationEntryDao.getEntriesForDate(1, LocalDate.now())
-        val reservationLogs = reservationEntryDao.getLogsForDate(1, LocalDate.now())
+        val reservationLogs = reservationEntryDao.getLogsForDate(LocalDate.now())
+        val entriesForTimeRange = reservationEntryDao.getEntriesForTimeRange(roomId = 1,
+                                                                             date = LocalDate.now(),
+                                                                             startQuant = LocalTime.of(0,0).toQuant(),
+                                                                             endQuant = LocalTime.of(14,0).toQuant())
 
         logger.info { "Reservation logs:" }
         for (entry in reservationLogs) { logger.info { entry } }
         logger.info { "Reservation entries:" }
         for (entry in reservationEntries) { logger.info { entry } }
+        logger.info { "Reservation entries for time range:" }
+        for (entry in entriesForTimeRange) { logger.info { entry } }
         session.close()
     }
 
