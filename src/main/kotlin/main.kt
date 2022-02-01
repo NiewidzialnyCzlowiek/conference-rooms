@@ -1,9 +1,6 @@
 import com.datastax.oss.driver.api.core.CqlIdentifier
 import com.datastax.oss.driver.api.core.CqlSession
 import mapper.ConferenceRoomsMapper
-import mapper.QuantCalculus.toQuant
-import mapper.ReservationEntry
-import mapper.ReservationLog
 import client.Client
 import mapper.QuantCalculus.MAX_QUANT
 import mu.KotlinLogging
@@ -13,9 +10,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.util.*
-import java.util.concurrent.ThreadLocalRandom
+import kotlin.random.Random
 
 private val logger = KotlinLogging.logger { }
 
@@ -26,61 +22,32 @@ object App {
         val session = CqlSession.builder().withAuthCredentials("cassandra", "cassandra").build()
         maybeCreateSchema(session)
         val mapper: ConferenceRoomsMapper = ConferenceRoomsMapper.builder(session).withDefaultKeyspace(KEYSPACE_ID).build()
-        val reservationEntryDao = mapper.reservationDao()
+        val reservationDao = mapper.reservationDao()
 
         val minDay = LocalDate.of(2022, 1, 1).toEpochDay()
         val maxDay = LocalDate.of(2022, 2, 1).toEpochDay()
-        //val userId = UUID.randomUUID()
+        val random = Random(Instant.now().toEpochMilli())
+        val userIds = (0..10).map { UUID.randomUUID() }
 
-        val client = Client(reservationEntryDao)
+        val client = Client(reservationDao)
         for (i in 1..100) {
-            val randomRoomId = (1..50).random()
-            val randomDay = ThreadLocalRandom.current().nextLong(minDay, maxDay)
+            val randomRoomId = (1..10).random()
+            val randomDay = random.nextLong(minDay, maxDay)
             val day = LocalDate.ofEpochDay(randomDay)
-            val userId = UUID.randomUUID()
+            val userId = userIds.random()
             val randomStartQuant = (0..MAX_QUANT).random()
             val randomEndQuant = (randomStartQuant.. MAX_QUANT).random()
 
             client.createReservation(randomRoomId, day, randomStartQuant, randomEndQuant, userId)
-
-            val reservationEntries = reservationEntryDao.getEntriesForDate(randomRoomId, day)
-            val reservationLogs = reservationEntryDao.getLogsForDate(day)
-            logger.info { "Reservation logs:" }
-            for (entry in reservationLogs) { logger.info { entry } }
-            logger.info { "Reservation entries:" }
-            for (entry in reservationEntries) { logger.info { entry } }
         }
-
-       /* val reservationEntry = ReservationEntry(roomId = 1,
-                                                date = LocalDate.now(),
-                                                quant = LocalTime.of(23, 55).toQuant(),
-                                                userId = userId)
-        val reservationEntry2 = reservationEntry.copy(quant = 1)
-        val reservationLog = ReservationLog(roomId = 1,
-                                            date = LocalDate.now(),
-                                            timestamp = Instant.now(),
-                                            userId = userId,
-                                            operation = ReservationLog.Operation.CREATE.name,
-                                            startQuant = LocalTime.of(12,0).toQuant(),
-                                            endQuant = LocalTime.of(13,0).toQuant())
-
-        reservationEntryDao.createEntry(reservationEntry)
-        reservationEntryDao.createEntry(reservationEntry2)
-        reservationEntryDao.createLog(reservationLog)
-
-        val reservationEntries = reservationEntryDao.getEntriesForDate(1, LocalDate.now())
-        val reservationLogs = reservationEntryDao.getLogsForDate(LocalDate.now())
-        val entriesForTimeRange = reservationEntryDao.getEntriesForTimeRange(roomId = 1,
-                                                                             date = LocalDate.now(),
-                                                                             startQuant = LocalTime.of(0,0).toQuant(),
-                                                                             endQuant = LocalTime.of(14,0).toQuant())
-
-        logger.info { "Reservation logs:" }
+        val today = LocalDate.now()
+        val reservationLogs = reservationDao.getLogsForDate(today).all()
+        logger.info { "Reservation logs (${reservationLogs.size}):" }
         for (entry in reservationLogs) { logger.info { entry } }
-        logger.info { "Reservation entries:" }
-        for (entry in reservationEntries) { logger.info { entry } }
-        logger.info { "Reservation entries for time range:" }
-        for (entry in entriesForTimeRange) { logger.info { entry } } */
+        logger.info { "Launching manager to find incorrect reservations" }
+        val manager = Manager(mapper)
+        manager.validateDate(today)
+
         session.close()
     }
 

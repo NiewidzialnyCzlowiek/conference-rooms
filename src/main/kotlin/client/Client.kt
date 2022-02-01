@@ -1,5 +1,6 @@
 package client
 
+import mapper.QuantCalculus.localTime
 import mapper.ReservationEntry
 import mapper.ReservationLog
 import mapper.TimeQuant
@@ -13,43 +14,32 @@ class Client(private val entryDao: ReservationDao) {
 
     private val logger = KotlinLogging.logger { }
 
-    fun createReservation(roomId: Int?, date: LocalDate?, quant: TimeQuant?, endQuant: TimeQuant?, userId: UUID?) {
-        val reservationEntry = ReservationEntry(
-            roomId = roomId,
-            date = date,
-            quant = quant,
-            userId = userId
-        )
-
-        /* val quantCounter = endQuant - quant
-
-        list reservationList
-        for (i in quantCounter) {
-          reservationList.add = reservationEntry.copy(quant += i)
-        }
-        */
-
-        val reservationLog = ReservationLog(roomId = roomId,
-            date = date,
-            timestamp = Instant.now(),
-            userId = userId,
-            operation = ReservationLog.Operation.CREATE.name,
-            startQuant = quant,
-            endQuant = endQuant)
-
+    fun createReservation(roomId: Int, date: LocalDate, quant: TimeQuant, endQuant: TimeQuant, userId: UUID) {
         val entriesForTimeRange = entryDao.getEntriesForTimeRange(roomId = roomId,
             date = date,
             startQuant = quant,
             endQuant = endQuant)
 
-        val reservation = entriesForTimeRange.one()
-        if (reservation == null) {
-            entryDao.createEntry(reservationEntry)
-            entryDao.createLog(reservationLog)
+        if (entriesForTimeRange.all().isEmpty()) {
+            val reservationEntry = ReservationEntry(
+                roomId = roomId,
+                date = date,
+                quant = quant,
+                userId = userId)
 
+            val reservationLog = ReservationLog(roomId = roomId,
+                date = LocalDate.now(),
+                timestamp = Instant.now(),
+                userId = userId,
+                operation = ReservationLog.Operation.CREATE.name,
+                startQuant = quant,
+                endQuant = endQuant)
+
+            entryDao.createEntriesForQuantRange(reservationEntry, quant, endQuant)
+            entryDao.createLog(reservationLog)
+            logger.info { "Reservation successful $reservationLog" }
         } else {
-            logger.info("The selected time range is occupied, please select a different date")
-            //logger.info("The nearest available room is on $reservation")
+            logger.warn { "Time range for $date, ${quant.localTime()} - ${endQuant.localTime()} is already occupied" }
         }
     }
 }

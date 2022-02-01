@@ -23,6 +23,16 @@ CREATE TABLE IF NOT EXISTS reservation_log
 ) WITH CLUSTERING ORDER BY (timestamp ASC, user_id ASC);
 
 
+CREATE TABLE IF NOT EXISTS reservation_correction
+(
+    date date,
+    timestamp timestamp,
+    user_id uuid,
+    operation text,
+    PRIMARY KEY (date, timestamp, user_id)
+) WITH CLUSTERING ORDER BY (timestamp ASC, user_id ASC);
+
+
 CREATE TABLE IF NOT EXISTS room
 (
     room_id int,

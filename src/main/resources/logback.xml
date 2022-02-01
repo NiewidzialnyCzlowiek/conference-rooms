@@ -17,9 +17,10 @@
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-    <root level="ERROR">
+    <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
     </root>
+    <logger name="io.netty" level="ERROR" />
     <logger name="com.datastax.oss.driver" level="ERROR"/>
-    <logger name="Main" level="INFO"/>
+<!--    <logger name="Main" level="DEBUG"/>-->
 </configuration>
