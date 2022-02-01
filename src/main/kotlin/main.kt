@@ -5,6 +5,7 @@ import mapper.QuantCalculus.toQuant
 import mapper.ReservationEntry
 import mapper.ReservationLog
 import client.Client
+import mapper.QuantCalculus.MAX_QUANT
 import mu.KotlinLogging
 import java.net.URI
 import java.nio.file.FileSystems
@@ -14,6 +15,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.*
+import java.util.concurrent.ThreadLocalRandom
 
 private val logger = KotlinLogging.logger { }
 
@@ -24,60 +26,34 @@ object App {
         val session = CqlSession.builder().withAuthCredentials("cassandra", "cassandra").build()
         maybeCreateSchema(session)
         val mapper: ConferenceRoomsMapper = ConferenceRoomsMapper.builder(session).withDefaultKeyspace(KEYSPACE_ID).build()
-
-        val userId = UUID.randomUUID()
         val reservationEntryDao = mapper.reservationDao()
 
-       /* val client = Client(reservationEntryDao)
-        while(true) {
-            print("Welcome, do you wish to:\n" +
-                    "1. Create a reservation \n" +
-                    "2. Delete a reservation \n ")
+        val minDay = LocalDate.of(2022, 1, 1).toEpochDay()
+        val maxDay = LocalDate.of(2022, 2, 1).toEpochDay()
+        //val userId = UUID.randomUUID()
 
-            val choice = readLine()
-            if (choice.equals("1")) {
-                print("Choose a room number: ")
-                val roomNumber = readLine()?.toInt()
-                print("Choose a date: ")
-                val date = readLine()
+        val client = Client(reservationEntryDao)
+        for (i in 1..100) {
+            val randomRoomId = (1..50).random()
+            val randomDay = ThreadLocalRandom.current().nextLong(minDay, maxDay)
+            val day = LocalDate.ofEpochDay(randomDay)
+            val userId = UUID.randomUUID()
+            val randomStartQuant = (0..MAX_QUANT).random()
+            val randomEndQuant = (randomStartQuant.. MAX_QUANT).random()
 
-                print("Choose a start hour: ")
-                val beginHour = readLine()
-                var hour: Int = 0
-                if (beginHour != null) {
-                    hour = beginHour.toInt()
-                }
+            client.createReservation(randomRoomId, day, randomStartQuant, randomEndQuant, userId)
 
-                print("Choose a start minute(rounded): ")
-                val beginMinute = readLine()
-                var minute: Int = 0
-                if (beginMinute != null) {
-                    minute = beginMinute.toInt()
-                }
-                val startQuant = LocalTime.of(hour, minute).toQuant()
+            val reservationEntries = reservationEntryDao.getEntriesForDate(randomRoomId, day)
+            val reservationLogs = reservationEntryDao.getLogsForDate(day)
+            logger.info { "Reservation logs:" }
+            for (entry in reservationLogs) { logger.info { entry } }
+            logger.info { "Reservation entries:" }
+            for (entry in reservationEntries) { logger.info { entry } }
+        }
 
-                print("Choose an end hour: ")
-                val endHour = readLine()
-                var hour2: Int = 0
-                if (endHour != null) {
-                    hour2 = endHour.toInt()
-                }
-
-                print("Choose an end minute(rounded): ")
-                val endMinute = readLine()
-                var minute2: Int = 0
-                if (endMinute != null) {
-                    minute2 = endMinute.toInt()
-                }
-                val endQuant = LocalTime.of(hour2, minute2).toQuant()
-
-                client.createReservation(roomNumber, date, startQuant, endQuant)
-            }
-        }*/
-
-        val reservationEntry = ReservationEntry(roomId = 1,
+       /* val reservationEntry = ReservationEntry(roomId = 1,
                                                 date = LocalDate.now(),
-                                                quant = LocalTime.of(12, 10).toQuant(),
+                                                quant = LocalTime.of(23, 55).toQuant(),
                                                 userId = userId)
         val reservationEntry2 = reservationEntry.copy(quant = 1)
         val reservationLog = ReservationLog(roomId = 1,
@@ -104,7 +80,7 @@ object App {
         logger.info { "Reservation entries:" }
         for (entry in reservationEntries) { logger.info { entry } }
         logger.info { "Reservation entries for time range:" }
-        for (entry in entriesForTimeRange) { logger.info { entry } }
+        for (entry in entriesForTimeRange) { logger.info { entry } } */
         session.close()
     }
 
