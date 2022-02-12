@@ -20,20 +20,13 @@ data class ReservationEntry(@PartitionKey(0) val roomId: Int?,
 
 @Entity
 @CqlName("reservation_log")
-data class ReservationLog(@PartitionKey(0) val date: LocalDate?,
+data class ReservationLog(@PartitionKey(0) val logDate: LocalDate?,
                           @ClusteringColumn(0) val timestamp: Instant?,
                           @ClusteringColumn(1) val userId: UUID?,
                           val roomId: Int?,
-                          val operation: String?,
+                          val reservationDate: LocalDate?,
                           val startQuant: TimeQuant?,
-                          val endQuant: TimeQuant?) {
-
-    enum class Operation(operation: String) {
-        CREATE("CREATE"),
-        DELETE("DELETE"),
-        CORRECT("CORRECT")
-    }
-}
+                          val endQuant: TimeQuant?)
 
 @Entity
 @CqlName("reservation_correction")
@@ -44,10 +37,32 @@ data class ReservationCorrection(@PartitionKey(0) val date: LocalDate?,
 
     companion object {
         fun fromLog(log: ReservationLog, operation: String): ReservationCorrection {
-            return ReservationCorrection(date = log.date,
+            return ReservationCorrection(date = log.logDate,
                                          timestamp = log.timestamp,
                                          userId = log.userId,
                                          operation = operation)
+        }
+    }
+}
+
+@Entity
+@CqlName("reservation_by_month")
+data class ReservationByMonth(@PartitionKey(0) val year: Int?,
+                              @PartitionKey(1) val month: Int?,
+                              @ClusteringColumn(0) val userId: UUID?,
+                              @ClusteringColumn(1) val date: LocalDate?,
+                              @ClusteringColumn(2) val startQuant: TimeQuant?,
+                              @ClusteringColumn(3) val roomId: Int?,
+                              val endQuant: TimeQuant?) {
+    companion object {
+        fun fromReservationLog(reservationLog: ReservationLog): ReservationByMonth {
+            return ReservationByMonth(year = reservationLog.reservationDate?.year,
+                                      month = reservationLog.reservationDate?.monthValue,
+                                      userId = reservationLog.userId,
+                                      date = reservationLog.reservationDate,
+                                      startQuant = reservationLog.startQuant,
+                                      roomId = reservationLog.roomId,
+                                      endQuant = reservationLog.endQuant)
         }
     }
 }
@@ -80,6 +95,9 @@ interface ReservationDao {
     @Update
     fun updateEntry(template: ReservationEntry)
 
+    @Delete
+    fun deleteEntry(entry: ReservationEntry)
+
     @Select
     fun getLogsForDate(date: LocalDate?): PagingIterable<ReservationLog>
 
@@ -88,10 +106,23 @@ interface ReservationDao {
     fun createLog(reservationLog: ReservationLog)
 
     @Select
-    @StatementAttributes(consistencyLevel = "QUORUM")
     fun getCorrectionsForDate(date: LocalDate?): PagingIterable<ReservationCorrection>
 
+    @Select
+    fun getCorrection(date: LocalDate?, timestamp: Instant?, userId: UUID?): ReservationCorrection?
+
     @Insert
-    @StatementAttributes(consistencyLevel = "QUORUM")
     fun createCorrection(reservationCorrection: ReservationCorrection)
+
+    @Insert
+    fun createReservationByMonth(reservationByMonth: ReservationByMonth)
+
+    @Select
+    fun getReservationsByMonth(year: Int?, month: Int?): PagingIterable<ReservationByMonth>
+
+    @Update
+    fun updateReservationByMonth(reservationByMonth: ReservationByMonth)
+
+    @Delete
+    fun deleteReservationByMonth(reservationByMonth: ReservationByMonth)
 }
