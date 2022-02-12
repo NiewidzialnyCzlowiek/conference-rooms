@@ -41,6 +41,8 @@ class Manager(session: CqlSession, keyspace: CqlIdentifier) {
                                 quant = quant,
                                 userId = logToDelete.userId)) }
                 }
+                logger.debug { "Recreating reservation $log" }
+                reservationDao.createEntriesForQuantRange(ReservationEntry(log.roomId, log.reservationDate, 0, log.userId), log.startQuant!!, log.endQuant!!)
             }
         }
     }
