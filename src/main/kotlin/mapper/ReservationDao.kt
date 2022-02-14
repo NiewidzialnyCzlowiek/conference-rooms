@@ -70,10 +70,10 @@ data class ReservationByMonth(@PartitionKey(0) val year: Int?,
 @Dao
 interface ReservationDao {
     @Insert
-    @StatementAttributes(consistencyLevel = "ONE")
+    @StatementAttributes(consistencyLevel = "ANY")
     fun createEntry(reservationEntry: ReservationEntry)
 
-    @StatementAttributes(consistencyLevel = "ONE")
+    @StatementAttributes(consistencyLevel = "ANY")
     @QueryProvider(
         providerClass = CreateReservationEntriesForQuantRange::class,
         entityHelpers = [ReservationEntry::class])
@@ -83,7 +83,6 @@ interface ReservationDao {
     fun getEntry(roomId: Int?, date: LocalDate?, quant: TimeQuant?): ReservationEntry?
 
     @Select
-    @StatementAttributes(consistencyLevel = "QUORUM")
     fun getEntriesForDate(roomId: Int?, date: LocalDate?): PagingIterable<ReservationEntry>
 
     @StatementAttributes(consistencyLevel = "ONE")

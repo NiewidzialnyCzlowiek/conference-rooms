@@ -1,5 +1,6 @@
 package mapper.query
 
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.PagingIterable
 import com.datastax.oss.driver.api.core.cql.PreparedStatement
@@ -18,7 +19,8 @@ class GetReservationEntriesRangeQueryProvider(
     private val preparedSelectEntries: PreparedStatement
 
     fun getEntriesForTimeRange(roomId: Int?, date: LocalDate?, startQuant: TimeQuant?, endQuant: TimeQuant?): PagingIterable<ReservationEntry> {
-        val boundSelectEntries = preparedSelectEntries.bind(roomId, date, startQuant, endQuant)
+        val boundSelectEntries = preparedSelectEntries.boundStatementBuilder(roomId, date, startQuant, endQuant)
+            .setConsistencyLevel(ConsistencyLevel.ONE).build()
         val reservationEntries = session.execute(boundSelectEntries).map {
             reservationEntryHelper[it, false]
         }

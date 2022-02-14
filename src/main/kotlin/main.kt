@@ -11,6 +11,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.time.LocalDate
 import java.util.*
+import java.util.stream.Collectors
 import kotlin.random.Random
 
 private val logger = KotlinLogging.logger { }
@@ -29,6 +30,7 @@ class RandomDataGenerator(private val props: Props, private val client: Client):
                 Thread.sleep(5)
                 client.createReservation(randomRoomId, day, randomStartQuant, randomEndQuant)
             }
+            Thread.sleep(10)
         }
         client.disconnect()
     }
@@ -36,11 +38,43 @@ class RandomDataGenerator(private val props: Props, private val client: Client):
     data class Props(val roomIds: List<Int>,
                      val iterations: Int,
                      val minEpochDay: Long,
-                     val maxEpochDay: Long)
+                     val maxEpochDay: Long,
+                     val keyspace: CqlIdentifier)
 }
 
 object App {
     private val KEYSPACE_ID = CqlIdentifier.fromCql("conference_rooms")
+
+    private fun runDataGenerator() {
+        val USERS_NO = 100
+        val ROOMS_NO = 1
+        val RESERVATIONS_PER_USER = 10
+        val DATE_FROM = LocalDate.of(2022, 1, 22)
+        val DATE_TO = LocalDate.of(2022, 1, 23)
+
+        val clients = (1..USERS_NO).toList().parallelStream().map {
+            val userSession = CqlSession.builder().withAuthCredentials("cassandra", "cassandra").build()
+            Client(userSession, KEYSPACE_ID, UUID.randomUUID())
+        }.collect(Collectors.toList())
+        val roomIds = (1..ROOMS_NO).toList()
+        val minDay = DATE_FROM.toEpochDay()
+        val maxDay = DATE_TO.toEpochDay()
+        val dataGeneratorProps = RandomDataGenerator.Props(roomIds, RESERVATIONS_PER_USER, minDay, maxDay, KEYSPACE_ID)
+
+        val clientThreads = clients.map { Thread(RandomDataGenerator(dataGeneratorProps, it)) }
+        clientThreads.forEach { it.start() }
+        clientThreads.forEach { it.join() }
+    }
+
+    private fun runManager(session: CqlSession) {
+        val today = LocalDate.now()
+        logger.info { "Launching manager to find incorrect reservations" }
+        val manager = Manager(session, KEYSPACE_ID)
+        manager.validateDate(today)
+        val corrections = manager.getCorrectionsForDate(today)
+        logger.info { "There are ${corrections.size} corrections for date $today" }
+        corrections.forEach { logger.info { it } }
+    }
 
     @JvmStatic fun main(args: Array<String>) {
         val session = CqlSession.builder().withAuthCredentials("cassandra", "cassandra").build()
@@ -51,36 +85,8 @@ object App {
             session.close()
             return
         }
-
-        val USERS_NO = 100
-        val ROOMS_NO = 2
-        val RESERVATIONS_PER_USER = 100
-        val DATE_FROM = LocalDate.of(2022, 1, 6)
-        val DATE_TO = LocalDate.of(2022, 1, 10)
-
-        val clients = (1..USERS_NO).map {
-            val userSession = CqlSession.builder().withAuthCredentials("cassandra", "cassandra").build()
-            Client(userSession, KEYSPACE_ID, UUID.randomUUID())
-        }
-        val roomIds = (1..ROOMS_NO).toList()
-        val minDay = DATE_FROM.toEpochDay()
-        val maxDay = DATE_TO.toEpochDay()
-        val dataGeneratorProps = RandomDataGenerator.Props(roomIds, RESERVATIONS_PER_USER, minDay, maxDay)
-
-        val clientThreads = clients.map { Thread(RandomDataGenerator(dataGeneratorProps, it)) }
-        clientThreads.forEach { it.run() }
-        clientThreads.forEach { it.join() }
-
-        val today = LocalDate.now()
-//        val reservationLogs = reservationDao.getLogsForDate(today).all()
-//        logger.info { "Reservation logs (${reservationLogs.size}):" }
-//        for (entry in reservationLogs) { logger.info { entry } }
-        logger.info { "Launching manager to find incorrect reservations" }
-        val manager = Manager(session, KEYSPACE_ID)
-        manager.validateDate(today)
-        val corrections = manager.getCorrectionsForDate(today)
-        logger.info { "There are ${corrections.size} corrections for date $today" }
-        corrections.forEach { logger.info { it } }
+        runDataGenerator()
+        runManager(session)
         session.close()
     }
 

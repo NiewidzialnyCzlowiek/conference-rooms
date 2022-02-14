@@ -1,5 +1,6 @@
 package mapper.query
 
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.BatchStatement
 import com.datastax.oss.driver.api.core.cql.BoundStatement
@@ -22,7 +23,7 @@ class CreateReservationEntriesForQuantRange(
         val batch = BatchStatement.builder(DefaultBatchType.LOGGED)
         val insertStatements = (startQuant..endQuant).map { reservationEntry.copy(quant = it) }
                                                      .map { bind(preparedInsertEntry, it, reservationEntryHelper) }
-        batch.addStatements(insertStatements)
+        batch.addStatements(insertStatements).setConsistencyLevel(ConsistencyLevel.ANY)
         session.execute(batch.build())
     }
 
