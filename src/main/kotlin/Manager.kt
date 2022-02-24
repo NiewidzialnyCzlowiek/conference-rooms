@@ -13,7 +13,7 @@ class Manager(session: CqlSession, keyspace: CqlIdentifier) {
 
     fun validateDate(date: LocalDate) {
         val logs = reservationDao.getLogsForDate(date).all()
-            .filter { reservationDao.getCorrection(it.logDate, it.timestamp, it.userId) == null}
+//            .filter { reservationDao.getCorrection(it.logDate, it.timestamp, it.userId) == null}
         val lastIndex = logs.size - 1
         for (i in 0..lastIndex) {
             val log = logs[i]

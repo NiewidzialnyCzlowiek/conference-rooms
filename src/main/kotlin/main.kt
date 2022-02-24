@@ -2,14 +2,21 @@ import com.datastax.oss.driver.api.core.CqlIdentifier
 import com.datastax.oss.driver.api.core.CqlSession
 import client.Client
 import com.datastax.oss.driver.api.core.cql.SimpleStatement
+import mapper.ConferenceRoomsMapper
 import mapper.QuantCalculus.MAX_QUANT
+import mapper.QuantCalculus.toQuant
+import mapper.ReservationDao
+import mapper.ReservationEntry
+import mapper.ReservationLog
 import mu.KotlinLogging
 import java.lang.Integer.min
 import java.net.URI
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.*
 import java.util.stream.Collectors
 import kotlin.random.Random
@@ -85,9 +92,36 @@ object App {
             session.close()
             return
         }
-        runDataGenerator()
+//        runDataGenerator()
+        generateConflictingData()
         runManager(session)
         session.close()
+    }
+
+    private fun generateConflictingData() {
+        val session = CqlSession.builder().withAuthCredentials("cassandra", "cassandra").build()
+        val mapper = ConferenceRoomsMapper.builder(session).withDefaultKeyspace(KEYSPACE_ID).build()
+        val reservationDao: ReservationDao = mapper.reservationDao()
+        val user1 = UUID.randomUUID()
+        val user2 = UUID.randomUUID()
+        val start1 = LocalTime.of(11,0).toQuant()
+        val end1 = LocalTime.of(11,45).toQuant()
+        val start2 = LocalTime.of(11,30).toQuant()
+        val end2 = LocalTime.of(12,0).toQuant()
+        val today = LocalDate.now()
+
+        reservationDao.createEntriesForQuantRange(
+            ReservationEntry(1, today, 0, user1),
+            start1,
+            end1
+        )
+        reservationDao.createLog(ReservationLog(today, Instant.now(), user1, 1, today, start1, end1))
+        reservationDao.createEntriesForQuantRange(
+            ReservationEntry(1, today, 0, user2),
+            start2,
+            end2
+        )
+        reservationDao.createLog(ReservationLog(today, Instant.now(), user2, 1, today, start2, end2))
     }
 
     @Throws(Exception::class)
