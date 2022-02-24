@@ -122,6 +122,7 @@ object App {
             end2
         )
         reservationDao.createLog(ReservationLog(today, Instant.now(), user2, 1, today, start2, end2))
+        session.close()
     }
 
     @Throws(Exception::class)
